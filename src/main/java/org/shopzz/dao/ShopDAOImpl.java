@@ -28,19 +28,12 @@ public class ShopDAOImpl implements ShopDAO {
         catch (ClassNotFoundException ex) {
             System.out.println("Class not found");
         }
-
-        /* Connecting to database */
-        try {
-            connection = DriverManager.getConnection(url, dbuser, dbpass);
-            System.out.println("Connection successful");
-        }
-        catch (SQLException ex) {
-            System.out.println("SQLException at connection: " + ex.getMessage());
-        }
     }
 
     @Override
     public List<Shop> getShopsSortedByDistance(Location userLocation) {
+        connectToDatabse();
+
         ArrayList<Shop> shops = new ArrayList<>();
 
         try {
@@ -72,6 +65,8 @@ public class ShopDAOImpl implements ShopDAO {
 
     @Override
     public List<Shop> getFavoriteShops(ListRequest request) {
+        connectToDatabse();
+
         ArrayList<Shop> shops = new ArrayList<>();
 
         try {
@@ -89,29 +84,48 @@ public class ShopDAOImpl implements ShopDAO {
 
     @Override
     public Shop likeShop(ActionRequest request) {
+        return interactWithShop(request, Interaction.LIKE);
+    }
+
+    @Override
+    public Shop dislikeShop(ActionRequest request) {
+        return interactWithShop(request, Interaction.DISLIKE);
+    }
+
+    private Shop interactWithShop(ActionRequest request, Interaction interaction) {
+        String interactionCode;
+        switch (interaction) {
+            case LIKE:
+                interactionCode = "1";
+                break;
+            case DISLIKE:
+                interactionCode = "0";
+                break;
+            case RESET:
+            default:
+                interactionCode = "null";
+                break;
+        }
+
+        connectToDatabse();
+
         Shop shop = request.getShop();
 
         int userId = getUserId(request);
         int shopId = shopExists(shop) ? shop.getId() : 0;
 
-        System.out.println("User Id: " + userId);
-        System.out.println("Shop Id: " + shopId);
+        // System.out.println("User Id: " + userId);
+        // System.out.println("Shop Id: " + shopId);
 
         if (shopId != 0 && userId != 0) {
             try {
                 /* Checking if interaction exists between user and shop *
                 / If exist, update. Else create.
                  */
-                PreparedStatement statement = connection.prepareStatement("SELECT user_id, shop_id FROM User_Shop WHERE user_id = ? AND shop_id = ?");
+                PreparedStatement statement = connection.prepareStatement("UPDATE User_Shop SET interaction = " + interactionCode + ", date = NOW() WHERE user_id = ? AND shop_id = ?");
                 statement.setInt(1, userId);
                 statement.setInt(2, shopId);
-                ResultSet resultSet = statement.executeQuery();
-
-                if (resultSet.next()) { // Then update the existing interaction
-                    statement = connection.prepareStatement("UPDATE User_Shop SET interaction = 1, date = NOW() WHERE user_id = ? AND shop_id = ?");
-                    statement.setInt(1, userId);
-                    statement.setInt(2, shopId);
-                    statement.executeUpdate();
+                if (statement.executeUpdate() > 0) {
                     System.out.println("Update successfully");
                 }
                 else { // Then create
@@ -129,11 +143,6 @@ public class ShopDAOImpl implements ShopDAO {
             }
         }
 
-        return null;
-    }
-
-    @Override
-    public Shop dislikeShop(ActionRequest request) {
         return null;
     }
 
@@ -178,6 +187,17 @@ public class ShopDAOImpl implements ShopDAO {
             System.out.println("SQLException: " + ex.getMessage());
         }
         return false;
+    }
+
+    private void connectToDatabse() {
+        /* Connecting to database */
+        try {
+            connection = DriverManager.getConnection(url, dbuser, dbpass);
+            System.out.println("Connection successful");
+        }
+        catch (SQLException ex) {
+            System.out.println("SQLException at connection: " + ex.getMessage());
+        }
     }
 
     /**

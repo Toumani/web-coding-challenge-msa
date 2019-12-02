@@ -33,8 +33,8 @@ public class ShopController {
     }
 
     @PostMapping(path = "/dislike")
-    public void dislikeShop(@RequestBody ActionRequest request) {
-        shopDAO.dislikeShop(request);
+    public Shop dislikeShop(@RequestBody ActionRequest request) {
+        return shopDAO.dislikeShop(request);
     }
 
 }
