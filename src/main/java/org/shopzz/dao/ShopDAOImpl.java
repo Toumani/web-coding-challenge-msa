@@ -308,23 +308,4 @@ public class ShopDAOImpl implements ShopDAO {
             }
         }
     }
-
-    /**
-     * Hashes for user password
-     */
-    private String sha1(String input) {
-        try {
-            MessageDigest messageDigest = MessageDigest.getInstance("SHA1");
-            byte[] result = messageDigest.digest(input.getBytes());
-            StringBuffer sb = new StringBuffer();
-            for (int i = 0; i < result.length; i++) {
-                sb.append(Integer.toString((result[i] & 0xff) + 0x100, 16).substring(1));
-            }
-            return sb.toString();
-        }
-        catch (NoSuchAlgorithmException ex) {
-            return "No such algorithm";
-        }
-
-    }
 }

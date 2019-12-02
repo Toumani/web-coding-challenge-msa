@@ -7,6 +7,11 @@ public class Connection {
     int userId;
     private Location location;
 
+    public Connection(String checksum, Location location) {
+        this.checksum = checksum;
+        this.location = location;
+    }
+
     public String getChecksum() { return checksum; }
 
     public void setChecksum(String checksum) { this.checksum = checksum; }

@@ -1,72 +1,51 @@
 package org.shopzz.dao;
 
 import org.shopzz.model.Connection;
+import org.shopzz.shopzzapp.util.Location;
 import org.shopzz.shopzzapp.util.SignInRequest;
 
 
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Random;
 
-public class AuthenticationImpl implements AuthenticationDAO {
-
-
-    private static String url = "jdbc:mysql://192.168.1.7:3306/SHOPZZ";
-    private static String dbuser = "shopzz";
-    private static String dbpass = "c6423kd";
-
-    private static String resetDelay = "0:00:20";
-
-    private static java.sql.Connection connection = null;
+public class AuthenticationImpl extends DAOImplementor implements AuthenticationDAO {
 
     public AuthenticationImpl() {
-        /* Loading Mariadb JDBC driver */
-        try {
-            Class.forName("com.mysql.jdbc.Driver");
-        }
-        catch (ClassNotFoundException ex) {
-            System.out.println("Class not found");
-        }
     }
 
     @Override
     public Connection signIn(SignInRequest request) {
-        connectToDatabse();
+        connectToDatabase();
+        Connection connection = null;
 
+        try {
+            PreparedStatement statement = DAOImplementor.connection.prepareStatement("SELECT * FROM User WHERE email = ? AND password = ?");
+            statement.setString(1, request.getEmail());
+            statement.setString(2, sha1(request.getPassword()));
+            ResultSet resultSet = statement.executeQuery();
 
-        return null;
+            // We're sure we have only one result or nothing
+            if (resultSet.next()) {
+                // Let's generate a random string
+                Random random = new Random();
+                String randomString = sha1(random.nextInt(Integer.MAX_VALUE) + "");
+                connection = new Connection(randomString, request.getLocation());
+            }
+        }
+        catch (SQLException ex) {
+            System.out.println("SQLException while auth");
+        }
+        return connection;
     }
 
     @Override
     public Connection register(SignInRequest request) {
         return null;
-    }
-
-    private void connectToDatabse() {
-        /* Connecting to database */
-        try {
-            connection = DriverManager.getConnection(url, dbuser, dbpass);
-            System.out.println("Connection successful");
-        }
-        catch (SQLException ex) {
-            System.out.println("SQLException at connection: " + ex.getMessage());
-        }
-    }
-
-    /**
-     * Properly closes the connection
-     */
-    private void closeConnection() {
-        if (connection != null) {
-            try {
-                connection.close();
-            }
-            catch (SQLException ex) {
-                System.out.println("SQLException: " + ex.getMessage());
-            }
-        }
     }
 
     /**

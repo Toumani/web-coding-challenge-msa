@@ -6,8 +6,8 @@ package org.shopzz.shopzzapp.util;
 public class RegisterRequest extends SignInRequest {
     private String name;
 
-    public RegisterRequest(String name, String email, String password) {
-        super(email, password);
+    public RegisterRequest(String name, String email, String password, Location location) {
+        super(email, password, location);
         this.name = name;
     }
 
