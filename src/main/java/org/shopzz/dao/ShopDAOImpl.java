@@ -67,17 +67,27 @@ public class ShopDAOImpl implements ShopDAO {
     public List<Shop> getFavoriteShops(ListRequest request) {
         connectToDatabse();
 
-        ArrayList<Shop> shops = new ArrayList<>();
+        int userId = getUserId(request);
+        ArrayList<Shop> shops = null;
 
-        try {
-            Statement statement = connection.createStatement();
-            ResultSet resultSet = statement.executeQuery("SELECT * FROM Shop");
-        }
-        catch (SQLException ex) {
+        if (userId > 0) {
+            try {
+                Statement statement = connection.createStatement();
+                String query = "SELECT s.id, s.name, s.latitude, s.longitude, s.image " +
+                                "FROM Shop s " +
+                                "INNER JOIN User_Shop us " +
+                                "ON s.id = us.shop_id " +
+                                "WHERE us.interaction = 1 " +
+                                "AND us.user_id = 1";
+                System.out.println(query);
+                ResultSet resultSet = statement.executeQuery(query);
+                shops = fillShopList(resultSet);
+                shops.sort(new LocationComparator(request.getLocation()));
+            } catch (SQLException ex) {
                 System.out.println("SQLException when getting favorite shops: " + ex.getMessage());
-        }
-        finally {
-            closeConnection();
+            } finally {
+                closeConnection();
+            }
         }
         return shops;
     }
@@ -92,6 +102,32 @@ public class ShopDAOImpl implements ShopDAO {
         return interactWithShop(request, Interaction.DISLIKE);
     }
 
+    private ArrayList<Shop> fillShopList(ResultSet resultSet) {
+        ArrayList<Shop> shops = new ArrayList<>();
+
+        try {
+            while (resultSet.next()) {
+                shops.add(
+                        new Shop(resultSet.getString("name"),
+                                resultSet.getString("image"),
+                                new Location(resultSet.getFloat("latitude"),
+                                        resultSet.getFloat("longitude"))
+                        ));
+            }
+        }
+        catch (SQLException ex) {
+            System.out.println("SQLException when getting shops: " + ex.getMessage());
+        }
+
+        return shops;
+    }
+
+    /**
+     * Likes, dislikes or resets interaction between user and shop
+     * @param request client request
+     * @param interaction like, dislike or reset
+     * @return the corresponding shop. Null if no shop found
+     */
     private Shop interactWithShop(ActionRequest request, Interaction interaction) {
         String interactionCode;
         switch (interaction) {
