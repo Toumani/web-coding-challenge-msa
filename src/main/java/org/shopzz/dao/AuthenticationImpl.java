@@ -2,6 +2,7 @@ package org.shopzz.dao;
 
 import org.shopzz.model.Connection;
 import org.shopzz.shopzzapp.util.Location;
+import org.shopzz.shopzzapp.util.RegisterRequest;
 import org.shopzz.shopzzapp.util.SignInRequest;
 
 
@@ -24,10 +25,7 @@ public class AuthenticationImpl extends DAOImplementor implements Authentication
         Connection connection = null;
 
         try {
-            PreparedStatement statement = DAOImplementor.connection.prepareStatement("SELECT * FROM User WHERE email = ? AND password = ?");
-            statement.setString(1, request.getEmail());
-            statement.setString(2, sha1(request.getPassword()));
-            ResultSet resultSet = statement.executeQuery();
+            ResultSet resultSet = checkUserAndPassword(request);
 
             // We're sure we have only one result or nothing
             if (resultSet.next()) {
@@ -35,17 +33,62 @@ public class AuthenticationImpl extends DAOImplementor implements Authentication
                 Random random = new Random();
                 String randomString = sha1(random.nextInt(Integer.MAX_VALUE) + "");
                 connection = new Connection(randomString, request.getLocation());
+                PreparedStatement statement = DAOImplementor.connection.prepareStatement("INSERT INTO `Connection` VALUES (?, ?, ?, ?)");
+                statement.setString(1, randomString);
+                statement.setInt(2, resultSet.getInt("id"));
+                statement.setFloat(3, request.getLocation().getLatitude());
+                statement.setFloat(4, request.getLocation().getLongitude());
+                statement.executeQuery();
             }
         }
         catch (SQLException ex) {
-            System.out.println("SQLException while auth");
+            System.out.println("SQLException while auth: " + ex.getMessage());
         }
+
+        closeConnection();
+
         return connection;
     }
 
     @Override
-    public Connection register(SignInRequest request) {
-        return null;
+    public Connection register(RegisterRequest request) {
+        connectToDatabase();
+        Connection connection = null;
+
+        try {
+            ResultSet resultSet = checkUser(request);
+
+            // We should proceed insertion only if the user doesn't exist yet
+            if (!resultSet.next()) {
+                PreparedStatement statement = DAOImplementor.connection.prepareStatement("INSERT INTO User (name, email, password) VALUES (?, ?, ?)");
+                statement.setString(1, request.getName());
+                statement.setString(2, request.getEmail());
+                statement.setString(3, sha1(request.getPassword()));
+                statement.executeQuery();
+            }
+        }
+        catch (SQLException ex) {
+            System.out.println("SQLException while registering: " + ex.getMessage());
+        }
+
+        closeConnection();
+
+        return signIn(request);
+    }
+
+    private ResultSet checkUserAndPassword(SignInRequest request) throws SQLException {
+        PreparedStatement statement = DAOImplementor.connection.prepareStatement("SELECT * FROM User WHERE email = ? AND password = ?");
+        statement.setString(1, request.getEmail());
+        statement.setString(2, sha1(request.getPassword()));
+        ResultSet resultSet = statement.executeQuery();
+        return resultSet;
+    }
+
+    private ResultSet checkUser(SignInRequest request) throws SQLException {
+        PreparedStatement statement = DAOImplementor.connection.prepareStatement("SELECT * FROM User WHERE email = ?");
+        statement.setString(1, request.getEmail());
+        ResultSet resultSet = statement.executeQuery();
+        return resultSet;
     }
 
     /**
