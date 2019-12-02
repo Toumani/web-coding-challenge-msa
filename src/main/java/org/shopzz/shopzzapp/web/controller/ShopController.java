@@ -14,12 +14,12 @@ import java.util.List;
 
 @RestController
 public class ShopController {
-    @Autowired
-    ShopDAO shopDAO;
+
+    private ShopDAO shopDAO = new ShopDAOImpl();
 
     @PostMapping(path = "/shops")
     public List<Shop> getNearbyShops(@RequestBody ListRequest request) {
-        return shopDAO.getShopsSortedByDistance();
+        return shopDAO.getShopsSortedByDistance(request.getLocation());
     }
 
     @PostMapping(path = "/favorite")
