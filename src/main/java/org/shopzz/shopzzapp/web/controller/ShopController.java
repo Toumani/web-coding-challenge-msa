@@ -24,7 +24,7 @@ public class ShopController {
 
     @PostMapping(path = "/favorite")
     public List<Shop> getFavoriteShops(@RequestBody ListRequest request) {
-        return shopDAO.getFavoriteShops();
+        return shopDAO.getFavoriteShops(request);
     }
 
     @PostMapping(path = "/like")
