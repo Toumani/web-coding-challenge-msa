@@ -8,4 +8,6 @@ import org.shopzz.model.Shop;
 
 public class Request {
     protected String hashcode;
+
+    public String getHashcode() { return hashcode; }
 }

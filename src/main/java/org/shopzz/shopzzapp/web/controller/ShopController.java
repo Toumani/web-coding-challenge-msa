@@ -28,13 +28,13 @@ public class ShopController {
     }
 
     @PostMapping(path = "/like")
-    public void likeShop(@RequestBody ActionRequest request) {
-        shopDAO.likeShop(request.getShop().getId());
+    public Shop likeShop(@RequestBody ActionRequest request) {
+        return shopDAO.likeShop(request);
     }
 
     @PostMapping(path = "/dislike")
     public void dislikeShop(@RequestBody ActionRequest request) {
-        shopDAO.dislikeShop(request.getShop().getId());
+        shopDAO.dislikeShop(request);
     }
 
 }
