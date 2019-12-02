@@ -18,6 +18,8 @@ public class ShopDAOImpl implements ShopDAO {
     private static String dbuser = "shopzz";
     private static String dbpass = "c6423kd";
 
+    private static String resetDelay = "0:00:20";
+
     private static Connection connection = null;
 
     public ShopDAOImpl() {
@@ -31,29 +33,67 @@ public class ShopDAOImpl implements ShopDAO {
     }
 
     @Override
-    public List<Shop> getShopsSortedByDistance(Location userLocation) {
+    public List<Shop> getShopsSortedByDistance(ListRequest request) {
         connectToDatabse();
 
-        ArrayList<Shop> shops = new ArrayList<>();
+        int userId = getUserId(request);
+
+        ArrayList<Shop> shops = null;
 
         try {
-            Statement statement = connection.createStatement();
-            ResultSet resultSet = statement.executeQuery("SELECT * FROM Shop");
+            if (userId > 0) {
+                Statement statement = connection.createStatement();
+                /* First we reset the status of all disliked shop by the current user only
+                 * In fact there's no need to reset for all users which may require useless resources*/
+                String resetQuery = "UPDATE User_Shop " +
+                        "SET interaction = null " +
+                        "WHERE TIMEDIFF(NOW(), date) > '" + resetDelay + "' " +
+                        "AND interaction = 0 " +
+                        "AND user_id = " + userId;
+                System.out.println("Reset Query: " + resetQuery);
+                statement.executeUpdate(resetQuery);
 
-            while (resultSet.next()) {
-                shops.add(
-                        new Shop(resultSet.getString("name"),
-                                resultSet.getString("image"),
-                                new Location(resultSet.getFloat("latitude"),
-                                            resultSet.getFloat("longitude"))
-                                ));
+                ResultSet allShopsResultSet = statement.executeQuery("SELECT s.id, s.name, s.latitude, s.longitude, s.image FROM Shop s");
+                ArrayList<Shop> allShops = fillShopList(allShopsResultSet);
+                System.out.println("All shops: " + allShops);
+
+                ResultSet filteredShopsResultSet = statement.executeQuery("SELECT s.id, s.name, s.latitude, s.longitude, s.image " +
+                                                                    "FROM Shop s " +
+                                                                    "INNER JOIN User_Shop us " +
+                                                                    "ON s.id = us.shop_id " +
+                                                                    "WHERE user_id = " + userId + " " +
+                                                                    "AND interaction IS NOT NULL ");
+                ArrayList<Shop> filteredShops = fillShopList(filteredShopsResultSet);
+                System.out.println("Filtered shops: " + filteredShops);
+
+                /* Filtering out disliked shops
+                * Mariadb current stable release (10.1.30) doesn't support EXCEPT SQL keyword */
+                shops = new ArrayList<>();
+
+                int[] filteringId = new int[filteredShops.size()];
+                int i = 0;
+                for (Shop shop : filteredShops) {
+                    filteringId[i++] = shop.getId();
+                }
+
+                for (Shop shop : allShops) {
+                    boolean keep = true;
+                    for (int index : filteringId) {
+                        System.out.println("Shop id: " + shop.getId());
+                        System.out.println("Filtering id: " + index);
+                        if (shop.getId() == index) {
+                            keep = false;
+                            break;
+                        }
+                    }
+                    if (keep)
+                        shops.add(shop);
+                }
+                System.out.println("Remainder: " + shops);
+
+                shops.sort(new LocationComparator(request.getLocation()));
             }
-
-            shops.sort(new LocationComparator(userLocation));
-
-            return shops;
         }
-
         catch (SQLException ex) {
             System.out.println("SQLException when getting shops: " + ex.getMessage());
         }
@@ -78,8 +118,8 @@ public class ShopDAOImpl implements ShopDAO {
                                 "INNER JOIN User_Shop us " +
                                 "ON s.id = us.shop_id " +
                                 "WHERE us.interaction = 1 " +
-                                "AND us.user_id = 1";
-                System.out.println(query);
+                                "AND us.user_id = " + userId;
+
                 ResultSet resultSet = statement.executeQuery(query);
                 shops = fillShopList(resultSet);
                 shops.sort(new LocationComparator(request.getLocation()));
@@ -97,9 +137,24 @@ public class ShopDAOImpl implements ShopDAO {
         return interactWithShop(request, Interaction.LIKE);
     }
 
+    /**
+     * Dislike a shop
+     * @param request
+     * @return the corresponding shop. Null if no shop found
+     */
     @Override
     public Shop dislikeShop(ActionRequest request) {
         return interactWithShop(request, Interaction.DISLIKE);
+    }
+
+    /**
+     * Removes a shop from favorites
+     * @param request
+     * @return the corresponding shop. Null if no shop found
+     */
+    @Override
+    public Shop removeFromFavorite(ActionRequest request) {
+        return interactWithShop(request, Interaction.RESET);
     }
 
     private ArrayList<Shop> fillShopList(ResultSet resultSet) {
@@ -108,7 +163,8 @@ public class ShopDAOImpl implements ShopDAO {
         try {
             while (resultSet.next()) {
                 shops.add(
-                        new Shop(resultSet.getString("name"),
+                        new Shop(resultSet.getInt("id"),
+                                resultSet.getString("name"),
                                 resultSet.getString("image"),
                                 new Location(resultSet.getFloat("latitude"),
                                         resultSet.getFloat("longitude"))
@@ -133,9 +189,11 @@ public class ShopDAOImpl implements ShopDAO {
         switch (interaction) {
             case LIKE:
                 interactionCode = "1";
+                System.out.print("Liking: ");
                 break;
             case DISLIKE:
                 interactionCode = "0";
+                System.out.print("Disiking: ");
                 break;
             case RESET:
             default:
@@ -159,6 +217,7 @@ public class ShopDAOImpl implements ShopDAO {
                 / If exist, update. Else create.
                  */
                 PreparedStatement statement = connection.prepareStatement("UPDATE User_Shop SET interaction = " + interactionCode + ", date = NOW() WHERE user_id = ? AND shop_id = ?");
+                System.out.println("UPDATE User_Shop SET interaction = " + interactionCode + ", date = NOW() WHERE user_id = ? AND shop_id = ?");
                 statement.setInt(1, userId);
                 statement.setInt(2, shopId);
                 if (statement.executeUpdate() > 0) {

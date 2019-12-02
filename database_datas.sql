@@ -11,3 +11,25 @@ INSERT INTO User (name, email, password) VALUES
 
 INSERT INTO Connection VALUES
 (SHA1('arbitrary auto-generated string'), 1, 32.288742, -9.236141);
+
+UPDATE User_Shop
+SET interaction = null
+WHERE TIMEDIFF(NOW(), date) > '2:00:00'
+AND user_id = 1;
+
+SELECT s.id, s.name, s.latitude, s.longitude, s.image FROM
+Shop s
+EXCEPT
+SELECT s.id, s.name, s.latitude, s.longitude, s.image FROM
+Shop s
+INNER JOIN User_Shop us
+ON s.id = us.shop_id
+WHERE user_id = 1
+AND interaction = 0
+
+SELECT s.id, s.name, s.latitude, s.longitude, s.image
+FROM Shop s
+INNER JOIN User_Shop us
+ON s.id = us.shop_id
+WHERE user_id = 1
+AND interaction IS NULL

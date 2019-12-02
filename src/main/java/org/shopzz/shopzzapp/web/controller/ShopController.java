@@ -19,7 +19,7 @@ public class ShopController {
 
     @PostMapping(path = "/shops")
     public List<Shop> getNearbyShops(@RequestBody ListRequest request) {
-        return shopDAO.getShopsSortedByDistance(request.getLocation());
+        return shopDAO.getShopsSortedByDistance(request);
     }
 
     @PostMapping(path = "/favorite")
@@ -35,6 +35,11 @@ public class ShopController {
     @PostMapping(path = "/dislike")
     public Shop dislikeShop(@RequestBody ActionRequest request) {
         return shopDAO.dislikeShop(request);
+    }
+
+    @PostMapping(path = "/remove")
+    public Shop removeFromFavorite(@RequestBody ActionRequest request) {
+        return  shopDAO.removeFromFavorite(request);
     }
 
 }
