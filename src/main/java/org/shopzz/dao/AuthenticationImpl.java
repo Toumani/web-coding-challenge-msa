@@ -16,13 +16,10 @@ import java.util.Random;
 
 public class AuthenticationImpl extends DAOImplementor implements AuthenticationDAO {
 
-    public AuthenticationImpl() {
-    }
-
     @Override
     public Connection signIn(SignInRequest request) {
         connectToDatabase();
-        Connection connection = null;
+        Connection connection = new Connection("", new Location(0f, 0f));
 
         try {
             ResultSet resultSet = checkUserAndPassword(request);
@@ -96,6 +93,8 @@ public class AuthenticationImpl extends DAOImplementor implements Authentication
      */
     private String sha1(String input) {
         try {
+            if (input == null)
+                input = "";
             MessageDigest messageDigest = MessageDigest.getInstance("SHA1");
             byte[] result = messageDigest.digest(input.getBytes());
             StringBuffer sb = new StringBuffer();

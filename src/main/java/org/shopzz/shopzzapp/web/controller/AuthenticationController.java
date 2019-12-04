@@ -4,10 +4,9 @@ import org.shopzz.dao.AuthenticationImpl;
 import org.shopzz.model.Connection;
 import org.shopzz.shopzzapp.util.RegisterRequest;
 import org.shopzz.shopzzapp.util.SignInRequest;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
+@CrossOrigin
 @RestController
 public class AuthenticationController {
 

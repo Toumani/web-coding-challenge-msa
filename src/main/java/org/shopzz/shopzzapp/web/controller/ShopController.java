@@ -6,12 +6,12 @@ import org.shopzz.model.Shop;
 import org.shopzz.shopzzapp.util.ActionRequest;
 import org.shopzz.shopzzapp.util.ListRequest;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
 
+@CrossOrigin
 @RestController
 public class ShopController {
 
@@ -40,6 +40,11 @@ public class ShopController {
     @PostMapping(path = "/remove")
     public Shop removeFromFavorite(@RequestBody ActionRequest request) {
         return  shopDAO.removeFromFavorite(request);
+    }
+
+    @GetMapping(value = "/test")
+    public String test() {
+        return "Hello world";
     }
 
 }

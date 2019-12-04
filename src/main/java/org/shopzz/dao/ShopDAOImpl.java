@@ -4,37 +4,22 @@ import org.shopzz.model.Shop;
 import org.shopzz.shopzzapp.util.*;
 import org.springframework.stereotype.Repository;
 
-import java.sql.*;
+import java.sql.Statement;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.sql.ResultSet;
+
 import java.util.ArrayList;
 import java.util.List;
 
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-
 @Repository
-public class ShopDAOImpl implements ShopDAO {
-
-    private static String url = "jdbc:mysql://192.168.1.7:3306/SHOPZZ";
-    private static String dbuser = "shopzz";
-    private static String dbpass = "c6423kd";
+public class ShopDAOImpl extends DAOImplementor implements ShopDAO {
 
     private static String resetDelay = "0:00:20";
 
-    private static Connection connection = null;
-
-    public ShopDAOImpl() {
-        /* Loading Mariadb JDBC driver */
-        try {
-            Class.forName("com.mysql.jdbc.Driver");
-        }
-        catch (ClassNotFoundException ex) {
-            System.out.println("Class not found");
-        }
-    }
-
     @Override
     public List<Shop> getShopsSortedByDistance(ListRequest request) {
-        connectToDatabse();
+        connectToDatabase();
 
         int userId = getUserId(request);
 
@@ -50,12 +35,10 @@ public class ShopDAOImpl implements ShopDAO {
                         "WHERE TIMEDIFF(NOW(), date) > '" + resetDelay + "' " +
                         "AND interaction = 0 " +
                         "AND user_id = " + userId;
-                System.out.println("Reset Query: " + resetQuery);
                 statement.executeUpdate(resetQuery);
 
                 ResultSet allShopsResultSet = statement.executeQuery("SELECT s.id, s.name, s.latitude, s.longitude, s.image FROM Shop s");
                 ArrayList<Shop> allShops = fillShopList(allShopsResultSet);
-                System.out.println("All shops: " + allShops);
 
                 ResultSet filteredShopsResultSet = statement.executeQuery("SELECT s.id, s.name, s.latitude, s.longitude, s.image " +
                                                                     "FROM Shop s " +
@@ -64,7 +47,6 @@ public class ShopDAOImpl implements ShopDAO {
                                                                     "WHERE user_id = " + userId + " " +
                                                                     "AND interaction IS NOT NULL ");
                 ArrayList<Shop> filteredShops = fillShopList(filteredShopsResultSet);
-                System.out.println("Filtered shops: " + filteredShops);
 
                 /* Filtering out disliked shops
                 * Mariadb current stable release (10.1.30) doesn't support EXCEPT SQL keyword */
@@ -79,8 +61,6 @@ public class ShopDAOImpl implements ShopDAO {
                 for (Shop shop : allShops) {
                     boolean keep = true;
                     for (int index : filteringId) {
-                        System.out.println("Shop id: " + shop.getId());
-                        System.out.println("Filtering id: " + index);
                         if (shop.getId() == index) {
                             keep = false;
                             break;
@@ -89,7 +69,6 @@ public class ShopDAOImpl implements ShopDAO {
                     if (keep)
                         shops.add(shop);
                 }
-                System.out.println("Remainder: " + shops);
 
                 shops.sort(new LocationComparator(request.getLocation()));
             }
@@ -105,7 +84,7 @@ public class ShopDAOImpl implements ShopDAO {
 
     @Override
     public List<Shop> getFavoriteShops(ListRequest request) {
-        connectToDatabse();
+        connectToDatabase();
 
         int userId = getUserId(request);
         ArrayList<Shop> shops = null;
@@ -201,15 +180,12 @@ public class ShopDAOImpl implements ShopDAO {
                 break;
         }
 
-        connectToDatabse();
+        connectToDatabase();
 
         Shop shop = request.getShop();
 
         int userId = getUserId(request);
         int shopId = shopExists(shop) ? shop.getId() : 0;
-
-        // System.out.println("User Id: " + userId);
-        // System.out.println("Shop Id: " + shopId);
 
         if (shopId != 0 && userId != 0) {
             try {
@@ -217,18 +193,15 @@ public class ShopDAOImpl implements ShopDAO {
                 / If exist, update. Else create.
                  */
                 PreparedStatement statement = connection.prepareStatement("UPDATE User_Shop SET interaction = " + interactionCode + ", date = NOW() WHERE user_id = ? AND shop_id = ?");
-                System.out.println("UPDATE User_Shop SET interaction = " + interactionCode + ", date = NOW() WHERE user_id = ? AND shop_id = ?");
+
                 statement.setInt(1, userId);
                 statement.setInt(2, shopId);
-                if (statement.executeUpdate() > 0) {
-                    System.out.println("Update successfully");
-                }
+                if (statement.executeUpdate() > 0);
                 else { // Then create
                     statement = connection.prepareStatement("INSERT INTO User_Shop VALUES (?, ?, 1, NOW())");
                     statement.setInt(1, userId);
                     statement.setInt(2, shopId);
                     statement.executeUpdate();
-                    System.out.println("Create successfully");
                 }
                 return shop;
             } catch (SQLException ex) {
@@ -282,30 +255,5 @@ public class ShopDAOImpl implements ShopDAO {
             System.out.println("SQLException: " + ex.getMessage());
         }
         return false;
-    }
-
-    private void connectToDatabse() {
-        /* Connecting to database */
-        try {
-            connection = DriverManager.getConnection(url, dbuser, dbpass);
-            System.out.println("Connection successful");
-        }
-        catch (SQLException ex) {
-            System.out.println("SQLException at connection: " + ex.getMessage());
-        }
-    }
-
-    /**
-     * Properly closes the connection
-     */
-    private void closeConnection() {
-        if (connection != null) {
-            try {
-                connection.close();
-            }
-            catch (SQLException ex) {
-                System.out.println("SQLException: " + ex.getMessage());
-            }
-        }
     }
 }
