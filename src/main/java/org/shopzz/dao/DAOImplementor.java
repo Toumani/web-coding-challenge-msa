@@ -5,7 +5,7 @@ import java.sql.SQLException;
 import java.sql.Connection;
 
 public class DAOImplementor {
-    private static String url = "jdbc:mysql://192.168.1.7:3306/SHOPZZ";
+    private static String url = "jdbc:mysql://localhost:3306/SHOPZZ"; //"jdbc:mysql://192.168.1.7:3306/SHOPZZ";
     private static String dbuser = "shopzz";
     private static String dbpass = "c6423kd";
 
